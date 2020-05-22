@@ -1,0 +1,29 @@
+#!/bin/bash
+DOMAIN=${1:-magento2-dockerized.local}
+VERSION=${2:-2.3.5-p1}
+
+if [ -d "sites/$DOMAIN" ]; then
+  echo "Installing '${VERSION}' in dir 'sites/${DOMAIN}'..."
+  rm -R sites/$DOMAIN/src/*
+else
+  echo "Creating dir 'sites/${DOMAIN}'..."
+  mkdir sites/$DOMAIN
+  mkdir sites/$DOMAIN/src
+  echo "Copying base files..."
+  cp -R compose/magento-2/* sites/$DOMAIN
+  cp -R compose/magento-2/.vscode sites/$DOMAIN
+  echo "Installing '${VERSION}'..."
+fi
+
+bin/download $VERSION
+
+cp -R src/magento-$VERSION/* sites/$DOMAIN/src/
+
+cd sites/$DOMAIN
+
+cp compose/magento-2/src/auth.json src/
+
+echo "Your system password has been requested to add an entry to /etc/hosts..."
+echo "127.0.0.1 $DOMAIN" | sudo tee -a /etc/hosts
+
+bin/setup $DOMAIN

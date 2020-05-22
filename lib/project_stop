@@ -1,0 +1,5 @@
+#!/bin/bash
+DOMAIN=${1:-magento2-dockerized.local}
+
+cd sites/$DOMAIN
+bin/stop

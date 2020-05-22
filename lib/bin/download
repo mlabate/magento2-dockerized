@@ -1,0 +1,12 @@
+#!/bin/bash
+[ -z "$1" ] && echo "Please specify the version to download (ex. 2.0.0)" && exit
+if [ ! -d "src" ]; then
+  mkdir -p src
+fi
+if [ ! -d "src/magento2-$1" ]; then
+  if [ ! -f src/magento2-$1.tar.gz ]; then
+      (cd src && curl -OL http://pubfiles.nexcess.net/magento/ce-packages/magento2-$1.tar.gz)
+  fi
+  echo "Extracting magento2-$1.tar.gz to ./src/magento2-$1"
+  tar xzf ~/.docker-magento/magento2-$1.tar.gz -o -C src/magento2-$1
+fi

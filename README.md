@@ -1,7 +1,7 @@
 <h1 align="center">magento2-dockerized</h1> 
 
 <div align="center">
-  <p>Docker configuration for Magento 2 CE</p>
+  <p>Docker configuration for Magento 2 CE/EE</p>
   <a href="https://GitHub.com/Naereen/StrapDown.js/graphs/commit-activity" target="_blank"><img src="https://img.shields.io/badge/maintained%3F-yes-brightgreen.svg?style=flat-square" alt="Maintained - Yes" /></a>
   <a href="https://opensource.org/licenses/MIT" target="_blank"><img src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
 </div>
@@ -22,11 +22,10 @@ This configuration is intended to be used as a Docker-based development environm
 
 Folders:
 
-- `docs`: projects and repository documents
-- `env`: environments configurations
-- `lib`: scripts for containers and projects setup and management
-- `lib/bin`: project binaries 
-- `sites`: environments code (dynamic)
+- `images`: Docker images for nginx and php
+- `compose`: sample setups with Docker Compose
+
+> The Magento 1 version of this development environment has been deprecated and is no longer supported. 
 
 ## Prerequisites
 
@@ -43,16 +42,16 @@ Run this automated one-liner from the directory you want to install your project
 #### No sample data
 
 ```bash
-curl -s https://raw.githubusercontent.com/mlabate/docker-magento/master/lib/onelinesetup | bash -s -- magento2-dockerized.local 2.3.5-p1
+curl -s https://raw.githubusercontent.com/mlabate/magento2-dockerized/master/lib/onelinesetup | bash -s -- magento2-dockerized.local 2.4.1
 ```
 
 #### With sample data
 
 ```bash
-curl -s https://raw.githubusercontent.com/markshust/docker-magento/master/lib/onelinesetup | bash -s -- magento2-dockerized.local with-samples-2.3.5-p1
+curl -s https://raw.githubusercontent.com/mlabate/magento2-dockerized/master/lib/onelinesetup | bash -s -- magento2-dockerized.local with-samples-2.4.1
 ```
 
-The `magento2-dockerized.local` above defines the hostname to use, and the `2.3.5-p1` defines the Magento version to install. Note that since we need a write to `/etc/hosts` for DNS resolution, you will be prompted for your system password during setup.
+The `magento2-dockerized.local` above defines the hostname to use, and the `2.4.1` defines the Magento version to install. Note that since we need a write to `/etc/hosts` for DNS resolution, you will be prompted for your system password during setup.
 
 Prefix the version with `with-samples-` if you would like to automatically install sample data along with Magento.
 
@@ -68,22 +67,24 @@ Same result as the one-liner above. Just replace `magento2-dockerized.local` ref
 
 ```bash
 # Download the Docker Compose template:
-curl -s https://raw.githubusercontent.com/mlabate/magento2-dockerized/master/lib/template | bash -s -- magento-2
+curl -s https://raw.githubusercontent.com/mlabate/magento2-dockerized/master/lib/template | bash
 
 # Download the version of Magento you want to use with:
-bin/download 2.3.5-p1
+bin/download 2.4.1
+
+# If the download fails, the script will attempt to download Magento with Composer
 
 # or if you'd rather install with Composer, run:
 #
 # OPEN SOURCE:
 #
 # rm -rf src
-# composer create-project --repository=https://repo.magento.com/ --ignore-platform-reqs magento/project-community-edition=2.3.5-p1 src
+# composer create-project --repository=https://repo.magento.com/ --ignore-platform-reqs magento/project-community-edition=2.4.1 src
 #
 # COMMERCE:
 #
 # rm -rf src
-# composer create-project --repository=https://repo.magento.com/ --ignore-platform-reqs magento/project-enterprise-edition=2.3.5-p1 src
+# composer create-project --repository=https://repo.magento.com/ --ignore-platform-reqs magento/project-enterprise-edition=2.4.1 src
 
 # Create a DNS host entry for the site:
 echo "127.0.0.1 ::1 magento2-dockerized.local" | sudo tee -a /etc/hosts
@@ -98,7 +99,7 @@ open https://magento2-dockerized.local
 
 ```bash
 # Download the Docker Compose template:
-curl -s https://raw.githubusercontent.com/mlabate/magento2-dockerized/master/lib/template | bash -s -- magento-2
+curl -s https://raw.githubusercontent.com/mlabate/magento2-dockerized/master/lib/template | bash
 
 # Remove existing src directory:
 rm -rf src
@@ -120,7 +121,7 @@ bin/composer install
 bin/copyfromcontainer vendor
 
 # Import existing database:
-bin/clinotty mysql -hdb -umagento -pmagento magento < existing/magento.sql
+bin/mysql < backups/magento.sql
 
 # Update database connection details to use the above Docker MySQL credentials:
 # Also note: creds for the MySQL server are defined at startup from env/db.env
@@ -138,9 +139,11 @@ bin/restart
 open https://magento2-dockerized.local
 ```
 
-#### Updates
+> For more details on how everything works, see the extended [setup readme](https://github.com/mlabate/magento2-dockerized/blob/master/SETUP.md).
 
-To update your project to the latest version of `magento2-dockerized`, run:
+## Updates
+
+To update your project to the latest version of `docker-magento`, run:
 
 ```
 bin/update
@@ -149,41 +152,6 @@ bin/update
 We recommend keeping your docker config files in version control, so you can monitor the changes to files after updates. After reviewing the code updates and ensuring they updated as intended, run `bin/restart` to restart your containers to have the new configuration take effect.
 
 It is recommended to keep your root docker config files in one repository, and your Magento code setup in another. This ensures the Magento base path lives at the top of one specific repository, which makes automated build pipelines and deployments easy to manage, and maintains compatibility with projects such as Magento Cloud.
-
-##### Older Versions
-
-Versions older than `24.0.0` did not include a `bin/update` helper script, and versions older than `26.0.0` had a different directory structure. For both of these situations, you can download the most recent file to your project by running:
-
-```
-(cd bin && curl -OL https://raw.githubusercontent.com/mlabate/magento2-dockerized/master/compose/magento-2/bin/update && chmod +x update)
-```
-
-
-#### Multiple projects
-
-> IMPORTANT: For multiple projects don't forget to change database configurations in `docker-compose.yml` to avoid errors due to overlaps between instances
-
-```bash
-
-# Init project with the name and the version you want to use; this will download Magento source code and perform setup
-lib/project_init magento2-dockerized.local 2.3.2
-
-# Open the result (https://magento2-dockerized.local/)
-lib/project_open magento2-dockerized.local
-
-```
-
-> For more details on how everything works, see the extended [setup readme](https://github.com/mlabate/magento2-dockerized/blob/master/SETUP.md).
-
-## Project Management CLI Commands
-
-- `lib/project_init`: Init project running the Magento setup process to install Magento from the source code, with domain name and Magento version (e.g. `lib/project_init magento2-dockerized.local 2.3.2`).
-- `lib/project_open`: Open the specific project (e.g. `lib/project_open magento2-dockerized.local`).
-- `lib/project_start`: Start a specific project (e.g. `lib/project_stop magento2-dockerized.local`).
-- `lib/project_stop`: Stop a specific project (e.g. `lib/project_stop magento2-dockerized.local`).
-- `lib/project_restart`: Stop and start a specific project (e.g. `lib/project_restart magento2-dockerized.local`).
-- `lib/project_remove_containers`: Remove containers of a specific project; project must be stopped (e.g. `lib/project_remove_containers magento2-dockerized.local`).
-- `lib/project_remove_volumes`: Remove containers of a specific project; project must be stopped and containers must be removed (e.g. `lib/project_remove_volumes magento2-dockerized.local`).
 
 ## Custom CLI Commands
 
@@ -195,12 +163,13 @@ lib/project_open magento2-dockerized.local
 - `bin/copytocontainer`: Copy folders or files from host to container. Ex. `bin/copytocontainer --all`
 - `bin/dev-urn-catalog-generate`: Generate URN's for PHPStorm and remap paths to local host. Restart PHPStorm after running this command.
 - `bin/devconsole`: Alias for `bin/n98-magerun2 dev:console`
-- `bin/download`: Download & extract specific Magento version to the `src` directory. Ex. `bin/download 2.3.3`
+- `bin/download`: Download & extract specific Magento version to the `src` directory. If the archive download fails, it will attempt to download with Composer. Ex. `bin/download 2.4.1`.
 - `bin/fixowns`: This will fix filesystem ownerships within the container.
 - `bin/fixperms`: This will fix filesystem permissions within the container.
 - `bin/grunt`: Run the grunt binary. Ex. `bin/grunt exec`
 - `bin/magento`: Run the Magento CLI. Ex: `bin/magento cache:flush`
-- `bin/mysql`: Run the MySQL CLI with database config from env/db.env. Ex `bin/mysql -e "EXPLAIN core_config_data"`
+- `bin/mysql`: Run the MySQL CLI with database config from `env/db.env`. Ex. `bin/mysql -e "EXPLAIN core_config_data"` or`bin/mysql < backups/magento.sql`
+- `bin/mysqldump`: Backup the Magento database. Ex. `bin/mysqldump > backups/magento.sql`
 - `bin/n98-magerun2`: Access the n98 magerun CLI. Ex: `bin/n98-magerun2 dev:console`
 - `bin/node`: Run the node binary. Ex. `bin/node --version`
 - `bin/npm`: Run the npm binary. Ex. `bin/npm install`
@@ -232,13 +201,19 @@ The hostname of each service is the name of the service within the `docker-compo
 Here's an example of how to connect to the MySQL cli tool of the Docker instance:
 
 ```
-bin/cli mysql -h db -umagento -pmagento magento
+bin/mysql
 ```
 
-You can use the `bin/clinotty` helper script to import a database. This example uses the root MySQL user, and looks for the `dbdump.sql` file in your local host directory:
+You can use the `bin/mysql` script to import a database, for example a file stored in your local host directory at `backups/magento.sql`:
 
 ```
-bin/clinotty mysql -h db -u root -pmagento magento < dbdump.sql
+bin/mysql < backups/magento.sql
+```
+
+You also can use `bin/mysqldump` to export the database. The file will appear in your local host directory at `backups/magento.sql`:
+
+```
+bin/mysqldump > backups/magento.sql
 ```
 
 ### Composer Authentication
@@ -259,25 +234,25 @@ Use the following lines to enable Redis on existing installs:
 
 **Enable for Cache:**
 
-`bin/magento setup:config:set --cache-backend=redis --cache-backend-redis-server=redis --cache-backend-redis-db=0`
+`bin/magento config:set --cache-backend=redis --cache-backend-redis-server=redis --cache-backend-redis-db=0`
 
 **Enable for Full Page Cache:**
 
-`bin/magento setup:config:set --page-cache=redis --page-cache-redis-server=redis --page-cache-redis-db=1`
+`bin/magento config:set --page-cache=redis --page-cache-redis-server=redis --page-cache-redis-db=1`
 
 **Enable for Session:**
 
-`bin/magento setup:config:set --session-save=redis --session-save-redis-host=redis --session-save-redis-log-level=4 --session-save-redis-db=2`
+`bin/magento config:set --session-save=redis --session-save-redis-host=redis --session-save-redis-log-level=4 --session-save-redis-db=2`
 
 You may also monitor Redis by running: `bin/redis redis-cli monitor`
 
-For more information about Redis usage with Magento, <a href="https://devdocs.magento.com/guides/v2.3/config-guide/redis/redis-session.html" target="_blank">see the DevDocs</a>.
+For more information about Redis usage with Magento, <a href="https://devdocs.magento.com/guides/v2.4/config-guide/redis/redis-session.html" target="_blank">see the DevDocs</a>.
 
 ### Xdebug & VS Code
 
 Install and enable the PHP Debug extension from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=felixfbecker.php-debug).
 
-
+Otherwise, this project now automatically sets up Xdebug support with VS Code. If you wish to set this up manually, please see the [`.vscode/launch.json`](https://github.com/mlabate/magento2-dockerized/blame/master/compose/.vscode/launch.json) file.
 
 ### Xdebug & PHPStorm
 

@@ -1,0 +1,87 @@
+# Docker Configuration for Magento
+# Version 1.7.0
+
+version: "3"
+
+services:
+  proxy:
+    image: willemwigman/magento-proxy:1.13-0
+    ports:
+      - "443:8443"
+    depends_on:
+      - varnish
+    links:
+      - varnish
+
+  varnish:
+    image: willemwigman/magento-varnish:latest
+    ports:
+      - "80:80"
+      - "6082:6082"
+    depends_on:
+      - app
+    links:
+      - app
+
+  app:
+    #image: markoshust/magento-nginx:1.18-4
+    image: nginx:1.18-alpine
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - phpfpm
+    links:
+      - db
+      - phpfpm
+    volumes: &appvolumes
+      - ~/.composer:/var/www/.composer:cached
+      - appdata:/var/www/html
+      - sockdata:/sock
+      - ssldata:/etc/nginx/certs
+
+  phpfpm:
+    #image: markoshust/magento-php:7.4-fpm-2
+    image: php:7.4-fpm-2
+    links:
+      - db
+    volumes: *appvolumes
+
+  db:
+    #image: percona:8.0
+    image: percona:5.7
+    command: --max_allowed_packet=64M
+        ports:
+      - "3306:3306"
+    env_file: env/db.env
+    volumes:
+      - dbdata:/var/lib/mysql
+
+  redis:
+    image: redis:5.0-alpine
+
+  elasticsearch:
+    #image: markoshust/magento-elasticsearch:7.6.2-2
+    image: elasticsearch:7.7.0
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+  # Disabling cron by default as it uses higher CPU, enable if needed
+  #cron:
+  #  #image: markoshust/magento-php:7.4-fpm-2
+  #  image: php:7.4-fpm-2
+  #  user: root
+  #  command: /usr/local/bin/cronstart
+  #  tty: true
+  #  links:
+  #    - db
+  #  volumes: *appvolumes
+
+volumes:
+  appdata:
+  dbdata:
+  rabbitmqdata:
+  sockdata:
+  ssldata:
+  
